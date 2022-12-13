@@ -44,7 +44,21 @@ public class Point implements Serializable {
         return x >= 0 && y >= 0 && x * x + y * y <= r * r / 4;
     }
 
+    private boolean checkX() {
+        return x > -5 && x < 3;
+    }
 
+    private boolean checkY() {
+        return y > -5 && y < 5;
+    }
+
+    private boolean checkR() {
+        return r > 0 && r <= 3;
+    }
+
+    public boolean validate() {
+        return checkX() && checkY() && checkR();
+    }
     public boolean checkHit() {
         return checkTriangle() || checkRectangle() || checkCircle();
     }

@@ -23,9 +23,13 @@ public class PointController {
 
     @PostMapping("/points")
     public Point addPoint(@RequestBody Point point) {
-        point.setHit(point.checkHit());
-        pointRepository.save(point);
-        return point;
+        if (point.validate()) {
+            point.setHit(point.checkHit());
+            pointRepository.save(point);
+            return point;
+        } else {
+            return null;
+        }
     }
 
     @DeleteMapping("/points")
