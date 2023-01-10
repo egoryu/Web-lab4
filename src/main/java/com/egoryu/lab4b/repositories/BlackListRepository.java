@@ -1,10 +1,10 @@
 package com.egoryu.lab4b.repositories;
 
-import com.egoryu.lab4b.entities.User;
+import com.egoryu.lab4b.entities.BlackList;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface UserRepository extends CrudRepository<User, String> {
-    boolean existsByUsername(String username);
+public interface BlackListRepository extends CrudRepository<BlackList, Long> {
+    boolean existsByToken(String token);
 }

@@ -23,13 +23,17 @@ public class Point implements Serializable {
     @Column(name = "r", nullable = false)
     private double r;
     @Column(name = "hit", nullable = false)
-    private boolean hit;
+    private String hit;
 
-    public Point(Double x, Double y, Double r) {
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "owner", referencedColumnName = "username")
+    private User owner;
+    public Point(Double x, Double y, Double r, User owner) {
         this.x = x;
         this.y = y;
         this.r = r;
         this.hit = checkHit();
+        this.owner = owner;
     }
 
     private boolean checkTriangle() {
@@ -59,7 +63,7 @@ public class Point implements Serializable {
     public boolean validate() {
         return checkX() && checkY() && checkR();
     }
-    public boolean checkHit() {
-        return checkTriangle() || checkRectangle() || checkCircle();
+    public String checkHit() {
+        return checkTriangle() || checkRectangle() || checkCircle() ? "hit" : "miss";
     }
 }

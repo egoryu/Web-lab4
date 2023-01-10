@@ -2,6 +2,7 @@ package com.egoryu.lab4b.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
 import java.util.List;
@@ -19,16 +20,12 @@ public class User implements Serializable {
     @Column(name = "password")
     private String password;
 
-    @Column(name = "salt")
-    private String salt;
+    @OneToMany(mappedBy = "owner")
+    @ToString.Exclude
+    private List<Point> usersResults;
 
-    @Column(name = "token")
-    private String token;
-
-    public User(String username, String password, String salt, String token) {
+    public User(String username, String password) {
         this.username = username;
         this.password = password;
-        this.salt = salt;
-        this.token = token;
     }
 }

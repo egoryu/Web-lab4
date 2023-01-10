@@ -1,100 +1,69 @@
 package com.egoryu.lab4b.controllers;
 
-import com.egoryu.lab4b.entities.Result;
+import com.egoryu.lab4b.entities.BlackList;
+import com.egoryu.lab4b.models.Request.RequestUser;
+import com.egoryu.lab4b.models.Response.ResponseString;
 import com.egoryu.lab4b.entities.User;
+import com.egoryu.lab4b.repositories.BlackListRepository;
 import com.egoryu.lab4b.repositories.UserRepository;
-import org.bouncycastle.util.encoders.Hex;
+import com.egoryu.lab4b.srcurity.AuthTokenFilter;
+import com.egoryu.lab4b.srcurity.JwtTokenUtils;
+import jakarta.validation.Valid;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.Optional;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "http://localhost:4200/")
+@RequestMapping("/user")
 public class UserController {
     private final UserRepository userRepository;
 
-    public UserController(UserRepository userRepository) {
+    private final PasswordEncoder passwordEncoder;
+
+    private final BlackListRepository blackListRepository;
+
+    public UserController(UserRepository userRepository, PasswordEncoder passwordEncoder, BlackListRepository blackListRepository) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.blackListRepository = blackListRepository;
     }
 
-    @PostMapping("/check")
-    public Result checkUser(@RequestBody User user) {
-        if (user == null) {
+    @PostMapping("/auth/check")
+    public ResponseString authenticateUser(@Valid @RequestBody RequestUser client) {
+        Optional<User> user = userRepository.findById(client.getUsername());
+
+        if (user.isEmpty()) {
             return null;
         }
 
-        Optional<User> client = userRepository.findById(user.getUsername());
-        if (client.isEmpty()) {
+        if (!passwordEncoder.matches(client.getPassword(), user.get().getPassword()))
+            return null;
+
+        String jwt = JwtTokenUtils.generateJwtToken(user.get().getUsername());
+
+        return new ResponseString(jwt);
+    }
+
+    @PostMapping("/auth/users")
+    public ResponseString registerUser(@Valid @RequestBody RequestUser user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
             return null;
         }
 
-        String token;
-        if (createHash(user.getPassword() + client.get().getSalt()).equals(client.get().getPassword())) {
-            token = randomString(32);
-            userRepository.deleteById(client.get().getUsername());
-            client.get().setToken(token);
-            userRepository.save(client.get());
+        User newUser = new User(user.getUsername(), passwordEncoder.encode(user.getPassword()));
 
-            return new Result(token, "");
-        }
-        return null;
+        userRepository.save(newUser);
+
+        String jwt = JwtTokenUtils.generateJwtToken(user.getUsername());
+
+        return new ResponseString(jwt);
     }
 
-    @PostMapping("/users")
-    public Result registration(@RequestBody User user) {
-        Optional<User> client = userRepository.findById(user.getUsername());
-        if (client.isPresent()) {
-            return null;
-        }
-        user.setSalt(randomString(8));
-        user.setPassword(createHash(user.getPassword() + user.getSalt()));
-        user.setToken(randomString(32));
-        userRepository.save(user);
-
-        return new Result(user.getToken(), "");
-    }
-
-    @PostMapping("/active")
-    public Result activeUser(@RequestBody Result data) {
-        if (data == null) {
-            return null;
-        }
-        String username = data.getResult(), token = data.getGive();
-        Optional<User> client = userRepository.findById(username);
-        if (client.isEmpty())
-            return null;
-
-        if (client.get().getToken().equals(token))
-            return new Result("reer", "yes");
-        return null;
-    }
-
-    private String createHash(String password) {
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-        byte[] hash = digest.digest(
-                password.getBytes(StandardCharsets.UTF_8));
-        return new String(Hex.encode(hash));
-    }
-
-    public String randomString(int targetStringLength) {
-        int leftLimit = 48; // numeral '0'
-        int rightLimit = 122; // letter 'z'
-        SecureRandom random = new SecureRandom();
-
-        return random.ints(leftLimit, rightLimit + 1)
-                .filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
-                .limit(targetStringLength)
-                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-                .toString();
-
+    @PostMapping("/logout")
+    public ResponseString logoutUser(@Valid @RequestBody String token) {
+        blackListRepository.save(new BlackList(token));
+        return new ResponseString("successful");
     }
 }
